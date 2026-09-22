@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "CommonJS", "moduleResolution": "Node", "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true, "esModuleInterop": true, "skipLibCheck": true, "resolveJsonModule": true, "outDir": "dist", "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "playwright.config.ts"]
+}

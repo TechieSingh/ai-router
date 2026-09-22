@@ -1,0 +1,58 @@
+{
+  "name": "jev-code-router",
+  "displayName": "Jev Code Router",
+  "description": "One coding conversation, local and cloud models, routed by Jev.",
+  "version": "0.1.0",
+  "publisher": "local-dev",
+  "license": "MIT",
+  "engines": { "vscode": "^1.90.0", "node": ">=20" },
+  "categories": ["Machine Learning", "Other"],
+  "main": "./dist/extension.cjs",
+  "activationEvents": ["onView:jevRouter.chat"],
+  "capabilities": { "untrustedWorkspaces": { "supported": false, "description": "This coding agent runs tools in your workspace." }, "virtualWorkspaces": false },
+  "contributes": {
+    "commands": [
+      { "command": "jevRouter.open", "title": "Jev Router: Open Chat" },
+      { "command": "jevRouter.configure", "title": "Jev Router: Configure API Keys" },
+      { "command": "jevRouter.settings", "title": "Jev Router: Open Settings" },
+      { "command": "jevRouter.diagnostics", "title": "Jev Router: Check Connections" },
+      { "command": "jevRouter.memory", "title": "Jev Router: Edit Project Memory" }
+    ],
+    "viewsContainers": { "activitybar": [{ "id": "jevRouter", "title": "Jev Router", "icon": "media/router.svg" }] },
+    "views": { "jevRouter": [{ "type": "webview", "id": "jevRouter.chat", "name": "Chat" }] },
+    "configuration": {
+      "title": "Jev Router",
+      "properties": {
+        "jevRouter.localUrl": { "type": "string", "default": "http://127.0.0.1:8080/v1", "scope": "machine", "description": "Local OpenAI-compatible API base URL." },
+        "jevRouter.localModel": { "type": "string", "default": "local-coder", "scope": "machine", "description": "Model alias configured in llama-server." },
+        "jevRouter.localContext": { "type": "number", "default": 8192, "minimum": 4096, "maximum": 131072, "description": "Must match the local server context capacity." },
+        "jevRouter.cloudUrl": { "type": "string", "default": "https://api.venice.ai/api/v1", "scope": "machine", "description": "Cloud OpenAI-compatible API base URL." },
+        "jevRouter.cloudModel": { "type": "string", "default": "qwen-3-6-plus", "scope": "machine" },
+        "jevRouter.cloudContext": { "type": "number", "default": 65536, "minimum": 4096, "maximum": 1000000, "description": "Working context cap; original history remains stored." },
+        "jevRouter.maxOutputTokens": { "type": "number", "default": 2048, "minimum": 256, "maximum": 16384 },
+        "jevRouter.maxSteps": { "type": "number", "default": 12, "minimum": 1, "maximum": 100 },
+        "jevRouter.dailyBudgetUsd": { "type": "number", "default": 5, "minimum": 0, "description": "Estimated cloud inference budget; excludes Jev and external tool charges." },
+        "jevRouter.runBudgetUsd": { "type": "number", "default": 1, "minimum": 0 },
+        "jevRouter.inputPricePerMillion": { "type": "number", "default": 0.63, "minimum": 0, "description": "Update if you change cloud models; used for budget estimates." },
+        "jevRouter.outputPricePerMillion": { "type": "number", "default": 3.75, "minimum": 0 },
+        "jevRouter.jevTimeoutMs": { "type": "number", "default": 1500, "minimum": 100, "maximum": 10000 },
+        "jevRouter.autoApproveEdits": { "type": "boolean", "default": false, "scope": "machine", "description": "Allow workspace edits without reviewing each diff." },
+        "jevRouter.mcpServers": { "type": "array", "default": [], "scope": "machine", "description": "Trusted MCP servers: {name, command, args} or {name, url}. Connections require approval each session. Never put API keys here.", "items": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "command": { "type": "string" }, "args": { "type": "array", "items": { "type": "string" } }, "url": { "type": "string" } }, "additionalProperties": false } }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/core.test.ts test/integration.test.ts",
+    "test:ui": "playwright test",
+    "test:local": "tsx scripts/smoke-local.ts",
+    "setup:local": "node scripts/setup-local.mjs",
+    "check": "npm run typecheck && npm test && npm run build",
+    "package": "node scripts/package.mjs",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": { "@modelcontextprotocol/sdk": "^1.17.0", "ajv": "^8.17.1", "sql.js": "^1.13.0" },
+  "devDependencies": { "@playwright/test": "^1.51.0", "@types/node": "^20.17.0", "@types/sql.js": "^1.4.9", "@types/vscode": "1.90.0", "@vscode/vsce": "2.26.1", "esbuild": "^0.25.0", "tsx": "^4.19.0", "typescript": "^5.8.0" },
+  "overrides": { "cheerio": "1.0.0", "markdown-it": "15.0.2", "linkify-it": "6.1.0" }
+}
