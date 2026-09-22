@@ -1,4 +1,4 @@
-param([int]$Port = 8080, [ValidateSet(8192,16384)][int]$Context = 8192)
+param([int]$Port = 8080, [ValidateSet(8192,16384)][int]$Context = 16384)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $runtimePath = Join-Path $projectRoot '.runtime'

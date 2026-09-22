@@ -21,9 +21,9 @@ powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1
 
 Setup downloads approximately 6.5 GB into `.runtime`, verifies SHA256 checksums, and records the model's immutable revision. It uses llama.cpp b10964 CUDA 12.4 and the Q5_K_M quantization of `mradermacher/Qwen3-8B-abliterated-GGUF`. Partial downloads resume when supported. The source is a reduced-refusal derivative, not a guarantee that every request will be answered or that its coding ability matches a frontier model.
 
-The launcher runs hidden with an 8K context, one generation slot, GPU offloading, Flash Attention, and Q8 KV cache. It binds only to `127.0.0.1:8080`, with model alias `local-coder`. Wait for loading to finish, then click **Connections**. Logs are `.runtime/local.stdout.log` and `.runtime/local.stderr.log`. Active local requests disable thinking through llama.cpp's chat-template option.
+The launcher runs hidden with a 16K context by default, one generation slot, full GPU offloading, Flash Attention, and Q8 KV cache. It binds only to `127.0.0.1:8080`, with model alias `local-coder`. Wait for loading to finish, then click **Connections**. Logs are `.runtime/local.stdout.log` and `.runtime/local.stderr.log`. Active local requests disable thinking through llama.cpp's chat-template option.
 
-For a 16K experiment, stop the server and start with `-Context 16384`; change **Jev Router: Local Context** to match. Check VRAM use and latency before keeping that setting. Keep room for Windows and the display. System RAM is not interchangeable with VRAM.
+Measured on a 12 GB RTX 3060: 8K context uses about 6.9 GB VRAM, 16K about 7.5 GB — both leave comfortable headroom for Windows and the display. 32K (this model's native training context) jumps to about 11.9 GB, leaving under 500 MB free, which is too tight to run reliably alongside anything else; that is why 16K, not 32K, is the shipped default. To fall back to 8K, start with `-Context 8192` and change **Jev Router: Local Context** to match. System RAM is not interchangeable with VRAM.
 
 ```powershell
 npm run test:local

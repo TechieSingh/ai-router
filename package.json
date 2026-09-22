@@ -25,7 +25,7 @@
       "properties": {
         "jevRouter.localUrl": { "type": "string", "default": "http://127.0.0.1:8080/v1", "scope": "machine", "description": "Local OpenAI-compatible API base URL." },
         "jevRouter.localModel": { "type": "string", "default": "local-coder", "scope": "machine", "description": "Model alias configured in llama-server." },
-        "jevRouter.localContext": { "type": "number", "default": 8192, "minimum": 4096, "maximum": 131072, "description": "Must match the local server context capacity." },
+        "jevRouter.localContext": { "type": "number", "default": 16384, "minimum": 4096, "maximum": 131072, "description": "Must match the local server context capacity." },
         "jevRouter.cloudUrl": { "type": "string", "default": "https://api.venice.ai/api/v1", "scope": "machine", "description": "Cloud OpenAI-compatible API base URL." },
         "jevRouter.cloudModel": { "type": "string", "default": "qwen-3-6-plus", "scope": "machine" },
         "jevRouter.cloudContext": { "type": "number", "default": 65536, "minimum": 4096, "maximum": 1000000, "description": "Working context cap; original history remains stored." },
