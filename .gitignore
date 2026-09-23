@@ -1,10 +1,2 @@
-node_modules/
-dist/
-*.vsix
 .runtime/
-.data/
-.env*
-test-results/
-playwright-report/
-*.sqlite*
 *.log
