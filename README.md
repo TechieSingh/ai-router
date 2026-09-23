@@ -11,21 +11,28 @@ This project does **not** build its own chat UI, model server, or automatic loca
 ## Setup
 
 1. Install LM Studio: `winget install --id ElementLabs.LMStudio`, then launch it once (needed before its `lms` CLI works).
-2. Import your GGUF model — if you already have one downloaded, no need to re-download:
+2. Import or download a GGUF model. To reuse one you already have (no re-download):
    ```
    lms import -y --user-repo "local/qwen3-8b-abliterated" "path\to\model.gguf"
    ```
-3. Load it and start the server:
+   Or download one LM Studio doesn't have in its curated catalog by full Hugging Face URL (repo-shorthand like `owner/repo` only works for catalog picks):
    ```
-   lms load qwen3-8b-abliterated --gpu max -c 24576 --identifier local-coder -y
+   lms get "https://huggingface.co/bartowski/Dolphin3.0-Llama3.1-8B-GGUF" -y
+   ```
+3. **Always unload everything before loading** — see the JIT gotcha below — then load under a fixed identifier and start the server:
+   ```
+   lms unload --all
+   lms load dolphin3.0-llama3.1-8b --gpu max -c 24576 --identifier local-coder -y
    lms server start
    ```
 
 Endpoint: `http://127.0.0.1:1234/v1`, model identifier `local-coder`.
 
-**Context length note:** LM Studio's default per-model settings didn't match what we'd tuned by hand before (full-precision KV cache instead of quantized), which pushed VRAM to 97% under load — too close to the edge to trust. Without a CLI flag for KV cache quantization, context length is the lever: `-c 24576` measured at **~79% VRAM (9.6 GB) under real sustained generation load**, with ~2.6 GB free. You can likely reclaim room for a larger context by setting KV cache quantization to Q8 in LM Studio's GUI (My Models → gear icon → advanced), the same setting we used to safely run 40,960 tokens by hand — this hasn't been done yet.
+**Currently running: Dolphin3.0-Llama3.1-8B**, not the Qwen3-8B-abliterated model used earlier. Reasons: Dolphin is fine-tuned on curated non-refusal data rather than post-hoc "abliterated" (weight surgery that ablates a refusal direction), so it's more consistent — a live test showed Qwen3-abliterated refusing an edgy prompt outright, a known limitation of abliteration (it reduces refusal, doesn't eliminate it). Dolphin also has no "thinking" overhead: a "reply with PONG" test cost 0 reasoning tokens vs. Qwen3's 163. Qwen3-8B-abliterated is still imported and can be swapped back in any time; just change the model name in the `lms load` command.
 
-**Known follow-up:** LM Studio doesn't disable Qwen3's "thinking" mode by default the way our old raw llama.cpp setup did (which used `chat_template_kwargs: enable_thinking: false`). A quick "PONG" test burned 163 reasoning tokens before answering. Worth disabling via LM Studio's per-model prompt template settings if response speed matters.
+**Critical gotcha — JIT auto-loading causes silent duplicate model instances.** LM Studio auto-loads *any* model identifier an API request names, if it isn't already loaded, using LM Studio's own default settings (different context/GPU config than whatever you loaded by hand) under a *different* identifier than the one you chose. This actually happened during setup: testing with a mismatched model name left two full copies of the same 8B model loaded simultaneously, silently doubling VRAM and destabilizing the server. There's no CLI or settings.json flag to disable this (checked `lms server start --help` and `settings.json`'s `jitModelTTL`/`unloadPreviousJITModelOnLoad` keys — no master toggle). The only reliable fix: run `lms unload --all` before every load, and make sure whatever model ID a client (Cline, curl, etc.) requests exactly matches the `--identifier` you loaded with.
+
+**Context length note:** LM Studio's default per-model settings don't match what was tuned by hand for the old raw llama.cpp setup (full-precision KV cache instead of quantized), which pushed VRAM to 97% under load with the Qwen3 model — too close to the edge to trust. Without a CLI flag for KV cache quantization, context length is the lever: `-c 24576` with Dolphin3-8B measured at **~64% VRAM (7.9 GB) under real sustained generation load**. You can likely reclaim room for a larger context by setting KV cache quantization to Q8 in LM Studio's GUI (My Models → gear icon → advanced) — not done yet.
 
 ### One-click start/stop after a reboot
 
