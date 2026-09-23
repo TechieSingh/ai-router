@@ -1,34 +1,31 @@
 # ai-router
 
-Scripts that set up and run a local coding model (llama.cpp + Qwen3-8B) on a Windows machine with an RTX 3060, so it can be used as a free, offline "local" model profile alongside a paid cloud model inside an existing VS Code coding agent.
+Notes and one-click launchers for running a local coding model via **[LM Studio](https://lmstudio.ai/)** on a Windows machine with an RTX 3060, used as a free, offline "local" model profile alongside a paid cloud model inside an existing VS Code coding agent.
 
-This project does **not** build its own chat UI, tool execution, or automatic local/cloud routing. Earlier versions of this repo did — a full custom VS Code extension with a webview chat panel, SQLite history, file/terminal/MCP tools, and a Jev-based routing proxy. That code was retired in favor of using an already-mature agent extension (**[Cline](https://github.com/cline/cline)**, or any similar OpenAI-compatible agent like Continue or Roo Code) for the actual chat/tools/UI, and switching between local and cloud **manually** rather than automatically. The old approach is still in this repo's git history if you ever want to revisit it.
+This project does **not** build its own chat UI, model server, or automatic local/cloud routing — earlier versions of this repo did (a custom VS Code extension, then a hand-rolled llama.cpp launcher), both retired once a mature existing app covered the same job better. All of that is still in git history if worth revisiting.
 
-## What's here
-
-- `scripts/setup-local.mjs` — downloads llama.cpp (CUDA build) and a quantized Qwen3-8B GGUF into `.runtime/`, with checksum verification and resumable downloads. No npm dependencies required.
-- `scripts/start-local.ps1` / `scripts/stop-local.ps1` — start/stop the local `llama-server` process, bound to `127.0.0.1:8080` only.
+- **Chat UI, tools, file edits, terminal**: [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev) (or Continue / Roo Code — anything accepting a custom OpenAI-compatible provider).
+- **Running the local model, with stats and configuration in a GUI**: LM Studio. It downloads/imports GGUF models, starts/stops an OpenAI-compatible server with one click, and shows live tokens/sec and VRAM usage — everything the old hand-written PowerShell scripts did, with an actual UI.
+- **Switching between local and cloud**: manual, via Cline's provider-profile dropdown. Neither app does automatic complexity-based routing out of the box.
 
 ## Setup
 
-```powershell
-node scripts/setup-local.mjs
-powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1
-```
+1. Install LM Studio: `winget install --id ElementLabs.LMStudio`, then launch it once (needed before its `lms` CLI works).
+2. Import your GGUF model — if you already have one downloaded, no need to re-download:
+   ```
+   lms import -y --user-repo "local/qwen3-8b-abliterated" "path\to\model.gguf"
+   ```
+3. Load it and start the server:
+   ```
+   lms load qwen3-8b-abliterated --gpu max -c 24576 --identifier local-coder -y
+   lms server start
+   ```
 
-This downloads llama.cpp b10964 (CUDA 12.4) and the Q5_K_M quantization of `mradermacher/Qwen3-8B-abliterated-GGUF` (~6.5 GB) into `.runtime/`. The source is a reduced-refusal derivative, not a guarantee that every request will be answered or that its coding ability matches a frontier model.
+Endpoint: `http://127.0.0.1:1234/v1`, model identifier `local-coder`.
 
-The launcher runs hidden, with:
-- **40,960-token context** — this model's native training ceiling. Going higher requires RoPE/YaRN scaling, which this llama.cpp build (b10964) hard-caps back down to 40,960 regardless of what you request, and which trades output quality for context beyond the model's training window in any case.
-- Full GPU offload, Flash Attention, Q8 KV cache, and an 8192/4096 batch/ubatch size.
+**Context length note:** LM Studio's default per-model settings didn't match what we'd tuned by hand before (full-precision KV cache instead of quantized), which pushed VRAM to 97% under load — too close to the edge to trust. Without a CLI flag for KV cache quantization, context length is the lever: `-c 24576` measured at **~79% VRAM (9.6 GB) under real sustained generation load**, with ~2.6 GB free. You can likely reclaim room for a larger context by setting KV cache quantization to Q8 in LM Studio's GUI (My Models → gear icon → advanced), the same setting we used to safely run 40,960 tokens by hand — this hasn't been done yet.
 
-Measured on a 12 GB RTX 3060 under real sustained generation load: **~10.3 GB VRAM (84%)**, leaving about 2 GB free for Windows/display. Full-precision (`f16`) KV cache was also tested and reaches 97% VRAM with llama.cpp's own loader warning it may not fit reliably — too close to the edge, so it isn't used. To use a smaller context, edit the `-Context` value in `start-local.ps1` (`8192` or `16384` also work).
-
-Endpoint: `http://127.0.0.1:8080/v1`, model alias `local-coder`. Logs: `.runtime/local.stdout.log` / `.runtime/local.stderr.log`.
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/stop-local.ps1
-```
+**Known follow-up:** LM Studio doesn't disable Qwen3's "thinking" mode by default the way our old raw llama.cpp setup did (which used `chat_template_kwargs: enable_thinking: false`). A quick "PONG" test burned 163 reasoning tokens before answering. Worth disabling via LM Studio's per-model prompt template settings if response speed matters.
 
 ### One-click start/stop after a reboot
 
@@ -38,22 +35,22 @@ Run once:
 powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcuts.ps1
 ```
 
-This adds **Start Local Model** and **Stop Local Model** shortcuts to your Desktop. Each runs its `.ps1` script completely hidden via a small `.vbs` wrapper (`scripts/start-local-hidden.vbs` / `stop-local-hidden.vbs`) — no console window. Double-click **Start Local Model** and wait ~10-20s for the model to load before using Cline.
+This adds **Start Local Model** and **Stop Local Model** shortcuts to your Desktop, each running hidden (no console window) via `scripts/start-lmstudio-hidden.vbs` / `stop-lmstudio-hidden.vbs`. Tested end-to-end: Start loads the model and starts the server (ready in a few seconds); Stop stops the server and unloads the model, freeing the GPU.
 
 ## Using it from VS Code
 
-Install an agentic coding extension that supports a custom OpenAI-compatible provider — [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev) is a good default; Continue and Roo Code also work the same way. Set up **two provider profiles** and switch between them by hand depending on task complexity:
+Set up **two provider profiles** in Cline and switch between them by hand depending on task complexity:
 
 **Local profile**
 - API Provider: OpenAI Compatible
-- Base URL: `http://127.0.0.1:8080/v1`
-- API Key: any non-empty placeholder (the local server doesn't check it)
+- Base URL: `http://127.0.0.1:1234/v1`
+- API Key: any non-empty placeholder (LM Studio doesn't check it)
 - Model ID: `local-coder`
-- Context Window: `40960`
+- Context Window: `24576`
 
 **Cloud profile**
 - API Provider: OpenAI Compatible (or the extension's native provider for your service)
 - Base URL / key / model: your paid provider's details
 - Context Window: whatever that provider supports
 
-Use Local for short, bounded edits and explanations — it's free and fully offline. Switch to Cloud for anything harder: multi-file refactors, ambiguous debugging, architecture decisions. There is no automatic routing between them; you decide per task.
+Use Local for short, bounded edits and explanations — it's free and fully offline. Switch to Cloud for anything harder: multi-file refactors, ambiguous debugging, architecture decisions.
