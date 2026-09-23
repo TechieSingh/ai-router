@@ -30,6 +30,16 @@ Endpoint: `http://127.0.0.1:8080/v1`, model alias `local-coder`. Logs: `.runtime
 powershell -ExecutionPolicy Bypass -File scripts/stop-local.ps1
 ```
 
+### One-click start/stop after a reboot
+
+Run once:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcuts.ps1
+```
+
+This adds **Start Local Model** and **Stop Local Model** shortcuts to your Desktop. Each runs its `.ps1` script completely hidden via a small `.vbs` wrapper (`scripts/start-local-hidden.vbs` / `stop-local-hidden.vbs`) — no console window. Double-click **Start Local Model** and wait ~10-20s for the model to load before using Cline.
+
 ## Using it from VS Code
 
 Install an agentic coding extension that supports a custom OpenAI-compatible provider — [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev) is a good default; Continue and Roo Code also work the same way. Set up **two provider profiles** and switch between them by hand depending on task complexity:
